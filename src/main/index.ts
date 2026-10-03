@@ -24,7 +24,7 @@ function createWindow(): BrowserWindow {
     show: false,
     frame: false,
     title: 'Archive',
-    backgroundColor: '#050a08',
+    backgroundColor: '#0e1411',
     webPreferences: {
       preload: fileURLToPath(new URL('../preload/index.cjs', import.meta.url)),
       contextIsolation: true,

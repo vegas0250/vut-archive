@@ -57,7 +57,8 @@ export function mountChrome(parent: Element): void {
     });
     menu.append(item);
   }
-  themeButton.addEventListener('click', () => {
+  themeButton.addEventListener('click', (event) => {
+    event.stopPropagation();
     const rect = themeButton.getBoundingClientRect();
     menu.showAt(rect.left, rect.bottom);
   });
@@ -65,6 +66,7 @@ export function mountChrome(parent: Element): void {
   bar.addEventListener('maximize', () => window.archive.toggleMaximize());
   bar.addEventListener('close', () => window.archive.close());
   window.archive.onMaximized((maximized) => bar.toggleAttribute('maximized', maximized));
-  bar.append(mark, themeButton, menu);
+  bar.append(mark, themeButton);
   parent.append(bar);
+  document.body.append(menu);
 }
