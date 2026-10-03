@@ -6,44 +6,46 @@ import 'vui/data-grid';
 import 'vui/button';
 import 'vui/empty';
 import 'vui/text';
-import { setDensity, setTheme } from 'vui/theme';
+import 'vui/menu';
+import 'vui/icon';
+import { setDensity } from 'vui/theme';
 import type { VButton } from 'vui/button';
 import type { VDataGrid, VDataGridRow } from 'vui/data-grid';
+import type { VMenu } from 'vui/menu';
+import { mountChrome, restoreTheme } from './chrome';
 import { formatSize } from './format';
 import type { Result } from '../shared/ipc';
 import type { ArchiveListing } from '../shared/zip';
 
-setTheme('system');
+restoreTheme();
 setDensity('compact');
 
 const root = document.querySelector('#app');
 if (!root) throw new Error('Не найдено окно приложения');
+mountChrome(root);
 
 const shell = document.createElement('vui-shell');
 shell.setAttribute('label', 'Archive');
 shell.setAttribute('skip-label', 'К содержимому архива');
 
-const title = document.createElement('vui-text');
-title.setAttribute('slot', 'header');
-title.setAttribute('variant', 'heading');
-title.setAttribute('level', '1');
-title.textContent = 'Archive';
-
 const toolbar = document.createElement('vui-toolbar');
 toolbar.setAttribute('slot', 'toolbar');
 toolbar.setAttribute('label', 'Команды');
 
-function button(label: string): VButton {
+function button(label: string, icon: string): VButton {
   const element = document.createElement('vui-button') as VButton;
   element.setAttribute('variant', 'ghost');
   element.setAttribute('size', 'small');
-  element.textContent = label;
+  const mark = document.createElement('vui-icon');
+  mark.setAttribute('slot', 'icon');
+  mark.setAttribute('name', icon);
+  element.append(mark, document.createTextNode(label));
   return element;
 }
 
-const openButton = button('Открыть');
-const extractButton = button('Извлечь');
-const createButton = button('Создать');
+const openButton = button('Открыть', 'folder-open');
+const extractButton = button('Извлечь', 'folder');
+const createButton = button('Создать', 'file-archive');
 toolbar.append(openButton, extractButton, createButton);
 
 const stage = document.createElement('div');
@@ -58,7 +60,7 @@ grid.multiple = true;
 grid.fill = true;
 grid.hidden = true;
 grid.columns = [
-  { key: 'name', title: 'Имя' },
+  { key: 'name', title: 'Имя', iconKey: 'icon' },
   { key: 'kind', title: 'Тип', priority: 'secondary' },
   { key: 'size', title: 'Размер', align: 'end', priority: 'secondary' },
   { key: 'compressed', title: 'Сжатый', align: 'end', priority: 'secondary' },
@@ -74,7 +76,25 @@ const statusEnd = document.createElement('span');
 statusEnd.setAttribute('slot', 'end');
 status.append(statusMain, statusEnd);
 
-shell.append(title, toolbar, stage, status);
+const fileMenu = document.createElement('vui-menu') as VMenu;
+fileMenu.setAttribute('label', 'Запись');
+const extractItem = document.createElement('vui-menu-item');
+extractItem.setAttribute('label', 'Извлечь');
+extractItem.setAttribute('icon', 'folder');
+fileMenu.append(extractItem);
+extractItem.addEventListener('click', () => extractButton.click());
+grid.addEventListener(
+  'contextmenu',
+  (event) => {
+    const row = event.composedPath().find((node): node is HTMLElement => node instanceof HTMLElement && node.getAttribute('role') === 'row');
+    const id = row?.dataset.id;
+    if (id && !grid.selectedIds.includes(id)) grid.selectedIds = [id];
+  },
+  true,
+);
+fileMenu.bindTo(grid);
+
+shell.append(toolbar, stage, status, fileMenu);
 root.append(shell);
 
 let current: ArchiveListing | null = null;
@@ -95,6 +115,7 @@ function showListing(listing: ArchiveListing): void {
   current = listing;
   const rows: VDataGridRow[] = listing.members.map((member) => ({
     id: member.name,
+    icon: member.directory ? 'folder' : 'file-archive',
     name: member.name,
     kind: member.directory ? 'Каталог' : 'Файл',
     size: member.directory ? '' : formatSize(member.size),

@@ -3,6 +3,10 @@ export const channels = {
   open: 'archive:open',
   extract: 'archive:extract',
   create: 'archive:create',
+  minimize: 'window:minimize',
+  toggleMaximize: 'window:toggle-maximize',
+  close: 'window:close',
+  state: 'window:state',
 } as const;
 
 export type Result<T> = { ok: true; value: T } | { ok: false; message: string };

@@ -10,6 +10,12 @@ const api = {
     ipcRenderer.invoke(channels.extract, file, destination, names),
   create: (destination: string, sources: string[]): Promise<Result<string>> =>
     ipcRenderer.invoke(channels.create, destination, sources),
+  minimize: (): void => ipcRenderer.send(channels.minimize),
+  toggleMaximize: (): void => ipcRenderer.send(channels.toggleMaximize),
+  close: (): void => ipcRenderer.send(channels.close),
+  onMaximized: (listener: (maximized: boolean) => void): void => {
+    ipcRenderer.on(channels.state, (_event, value: unknown) => listener(value === true));
+  },
 };
 
 contextBridge.exposeInMainWorld('archive', api);

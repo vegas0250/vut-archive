@@ -1,4 +1,5 @@
-import { app, BrowserWindow, dialog, nativeTheme, session } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, session } from 'electron';
+import { channels } from '../shared/ipc';
 import { fileURLToPath } from 'node:url';
 import { registerIpc } from './ipc';
 
@@ -21,8 +22,9 @@ function createWindow(): BrowserWindow {
     minWidth: 680,
     minHeight: 440,
     show: false,
+    frame: false,
     title: 'Archive',
-    backgroundColor: nativeTheme.shouldUseDarkColors ? '#1b1b1b' : '#f4f4f4',
+    backgroundColor: '#050a08',
     webPreferences: {
       preload: fileURLToPath(new URL('../preload/index.cjs', import.meta.url)),
       contextIsolation: true,
@@ -32,6 +34,8 @@ function createWindow(): BrowserWindow {
     },
   });
   win.once('ready-to-show', () => win.show());
+  win.on('maximize', () => win.webContents.send(channels.state, true));
+  win.on('unmaximize', () => win.webContents.send(channels.state, false));
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   win.webContents.on('will-navigate', (event, url) => {
     if (devUrl && url.startsWith(devUrl)) return;
@@ -54,6 +58,14 @@ if (!app.requestSingleInstanceLock()) {
   });
   app.whenReady().then(() => {
     if (!devUrl) installProductionPolicy();
+    ipcMain.on(channels.minimize, (event) => BrowserWindow.fromWebContents(event.sender)?.minimize());
+    ipcMain.on(channels.toggleMaximize, (event) => {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      if (!win) return;
+      if (win.isMaximized()) win.unmaximize();
+      else win.maximize();
+    });
+    ipcMain.on(channels.close, (event) => BrowserWindow.fromWebContents(event.sender)?.close());
     registerIpc(dialog);
     createWindow();
   });
